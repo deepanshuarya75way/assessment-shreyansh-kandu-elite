@@ -153,31 +153,31 @@ async function releaseTicket(ticket, newStatus, message) {
 
 // reserve slot capacity added new one
 
-// async function reserveSlotCapacity(slotId, quintalEquivalent){
-//   return Slot.findOneAndUpdate(
-//     {
-//       _id: slotId,
-//       status: 'open',
-//       $expr:{
-//       $lte:[
-//         {
-//           $add:[
-//             { $ifnull: ['$booked!uintal',0]},
-//             quintalEquivalent,
-//           ],
-//         },
-//         '$capacityQuintal',
-//       ],
-//     },
-//   },
-//   {
-//     $inc:{ bookedQuintal:quintalEquivalent},
-//   },
-//   {new: true}
+async function reserveSlotCapacity(slotId, quintalEquivalent){
+  return Slot.findOneAndUpdate(
+    {
+      _id: slotId,
+      status: 'open',
+      $expr:{
+      $lte:[
+        {
+          $add:[
+            { $ifnull: ['$booked!uintal',0]},
+            quintalEquivalent,
+          ],
+        },
+        '$capacityQuintal',
+      ],
+    },
+  },
+  {
+    $inc:{ bookedQuintal:quintalEquivalent},
+  },
+  {new: true}
   
 
-// );
-// }
+);
+}
 
 export async function bookSlot(req, res) {
   const {
