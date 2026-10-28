@@ -151,6 +151,34 @@ async function releaseTicket(ticket, newStatus, message) {
   await renumberWaitlist(slotId);
 }
 
+// reserve slot capacity added new one
+
+async function reserveSlotCapacity(slotId, quintalEquivalent){
+  return Slot.findOneAndUpdate(
+    {
+      _id: slotId,
+      status: 'open',
+      $expr:{
+      $lte:[
+        {
+          $add:[
+            { $ifnull: ['$booked!uintal',0]},
+            quintalEquivalent,
+          ],
+        },
+        '$capacityQuintal',
+      ],
+    },
+  },
+  {
+    $inc:{ bookedQuintal:quintalEquivalent},
+  },
+  {new: true}
+  
+
+);
+}
+
 export async function bookSlot(req, res) {
   const {
     cropType,
@@ -192,8 +220,17 @@ export async function bookSlot(req, res) {
 
   const quintalEquivalent = toQuintal(numericQuantity, unit);
   const fare = computeFare(quintalEquivalent);
-  const available = slot.capacityQuintal - slot.bookedQuintal;
-  const willConfirm = available >= quintalEquivalent;
+  //const available = slot.capacityQuintal - slot.bookedQuintal;
+  //const willConfirm = available >= quintalEquivalent;
+  
+  const reservation = await reserveSlotCapacity(
+    slot._id,
+    quintalEquivalent
+  );
+
+  const willConfirm = Boolean(reservation);
+
+
   const timeSlotLabel = `${slot.date}, ${slot.startTime} - ${slot.endTime}`;
 
   const ticket = await TokenRequest.create({
@@ -216,8 +253,8 @@ export async function bookSlot(req, res) {
   });
 
   if (willConfirm) {
-    slot.bookedQuintal += quintalEquivalent;
-    await slot.save();
+    //slot.bookedQuintal += quintalEquivalent;
+   // ***await slot.save();
 
     ticket.status = 'confirmed';
     ticket.tokenNumber = pnr();
@@ -232,9 +269,15 @@ export async function bookSlot(req, res) {
       'success',
     );
   } else {
-    const waitlistCount = await TokenRequest.countDocuments({ slotId: slot._id, status: 'waitlisted' });
-    const position = waitlistCount + 1;
+    //** const waitlistCount = await TokenRequest.countDocuments({ slotId: slot._id, status: 'waitlisted' });
+    // const position = waitlistCount + 1;
+     
+    const waitlistCount = await TokenRequest.countDocuments({
+      slotId: slot._id,
+      status: 'waitlisted',
+    });
 
+    const position= waitlistCount +1;
     ticket.status = 'waitlisted';
     ticket.tokenNumber = `WL/${position}`;
     ticket.waitlistPosition = position;
